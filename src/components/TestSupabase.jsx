@@ -1,10 +1,5 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-// Create Supabase client
-const supabaseUrl = "https://lndksrdypnligsjqvjda.supabase.co"; // Replace with your Supabase project URL
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxuZGtzcmR5cG5saWdzanF2amRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5NTE0NjQsImV4cCI6MjA2NzUyNzQ2NH0.m_bJhXGPqKsTuwUAs4uL7HVAet_mRu371z5wKifX5e8"; // Replace with your Supabase anon key
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from "../lib/supabaseClient";
 
 export default function AttendanceFromSupabase() {
     const [records, setRecords] = useState([]);
