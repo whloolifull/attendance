@@ -1,7 +1,7 @@
 import { useState } from "react";
 import NameFilter from "../components/NameFilter";
 
-export default function AttendanceTable({ showFilter = true, limit = null }) {
+export default function Attendance({ showFilter = true, limit = null }) {
   const [filter, setFilter] = useState("");
   // Mock data before Supabase connection
   const data = [

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../supabaseClient";
 
 export default function AttendanceFromSupabase() {
     const [records, setRecords] = useState([]);
@@ -32,7 +32,6 @@ export default function AttendanceFromSupabase() {
           return { ...record, user };
         });
         
-        console.log('Merged Data:', mergedData);
         setRecords(mergedData);
       };
       fetchData();

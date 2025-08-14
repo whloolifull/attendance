@@ -7,8 +7,8 @@ export default function Sidebar() {
       <nav className="flex flex-col space-y-2">
         <Link to="/" className="hover:bg-gray-700 p-2 rounded">Dashboard</Link>
         <Link to="/attendance" className="hover:bg-gray-700 p-2 rounded">Attendance</Link>
-        <Link to="/leaves" className="hover:bg-gray-700 p-2 rounded">Leaves</Link>
-        <Link to="/settings" className="hover:bg-gray-700 p-2 rounded">Settings</Link>
+        <Link to="/leaves" className="hover:bg-gray-700 p-2 rounded">Leave Management</Link>
+        <Link to="/supabase" className="hover:bg-gray-700 p-2 rounded">Supabase</Link>
       </nav>
     </aside>
   );

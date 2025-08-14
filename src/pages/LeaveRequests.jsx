@@ -1,7 +1,7 @@
 import { useState } from "react";
 import NameFilter from "../components/NameFilter";
 
-export default function LeaveRequestsTable({ showFilter = true, limit = null }) {
+export default function LeaveRequests({ showFilter = true, limit = null }) {
   const [filter, setFilter] = useState("");
   const [data, setData] = useState([
     { id: 1, name: "Alice", date: "2025-08-01", type: "Annual Leave", status: "Approved" },
