@@ -9,13 +9,16 @@ export default function NameFilter({ onFilter }) {
   };
 
   return (
-    <div className="mb-4">
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <span className="text-slate-400 text-lg">🔍</span>
+      </div>
       <input
         type="text"
-        placeholder="Filter by name"
+        placeholder="Search employees..."
         value={name}
         onChange={handleChange}
-        className="border border-gray-300 rounded px-3 py-1 w-64"
+        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 bg-white shadow-sm hover:shadow-md"
       />
     </div>
   );

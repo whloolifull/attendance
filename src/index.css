@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+.bg-primary {
+  background-color: #ed6103;
+}
+
+.text-primary {
+  color: #ed6103;
+}
+
+.border-primary {
+  border-color: #ed6103;
+}

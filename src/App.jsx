@@ -1,8 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Attendance from "./pages/Attendance";
 import Dashboard from "./pages/Dashboard";
 import LeaveRequests from "./pages/LeaveRequests";
-import AttendanceFromSupabase from "./pages/TestSupabase";
+import Attendance from "./pages/Attendance";
 import UserListWithReports from "./pages/UserListWithReports";
 import Sidebar from "./components/Sidebar";
 
@@ -13,16 +12,17 @@ export default function App() {
         <Route
           path="/*"
           element={
-              <div className="flex h-screen">
+              <div className="flex h-screen bg-gradient-to-br from-slate-50 to-blue-50">
                 <Sidebar />
-                <main className="flex-1 p-6 overflow-auto bg-gray-50">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/attendance" element={<Attendance />} />
-                    <Route path="/leaves" element={<LeaveRequests />} />
-                    <Route path="/supabase" element={<AttendanceFromSupabase />} />
-                    <Route path="/user-reports" element={<UserListWithReports />} />
-                  </Routes>
+                <main className="flex-1 p-4 lg:p-8 overflow-auto">
+                  <div className="max-w-7xl mx-auto">
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/attendance" element={<Attendance />} />
+                      <Route path="/leaves" element={<LeaveRequests />} />
+                      <Route path="/user-reports" element={<UserListWithReports />} />
+                    </Routes>
+                  </div>
                 </main>
               </div>
           }
