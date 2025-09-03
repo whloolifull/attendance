@@ -1,5 +1,7 @@
 import Attendance from "./Attendance";
 import LeaveRequests from "./LeaveRequests";
+import AnalyticsWidget from "../components/AnalyticsWidget";
+import DailySummary from "../components/DailySummary";
 
 export default function Dashboard() {
   return (
@@ -10,6 +12,8 @@ export default function Dashboard() {
       </div>
       
       <div className="grid gap-8">
+        <DailySummary />
+        <AnalyticsWidget />
         <Attendance showFilter={false} limit={10} />
         <LeaveRequests showFilter={false} limit={10} />
       </div>

@@ -3,6 +3,8 @@ import Dashboard from "./pages/Dashboard";
 import LeaveRequests from "./pages/LeaveRequests";
 import Attendance from "./pages/Attendance";
 import UserListWithReports from "./pages/UserListWithReports";
+import Analytics from "./pages/Analytics";
+import Events from "./pages/Events";
 import Sidebar from "./components/Sidebar";
 
 export default function App() {
@@ -21,6 +23,8 @@ export default function App() {
                       <Route path="/attendance" element={<Attendance />} />
                       <Route path="/leaves" element={<LeaveRequests />} />
                       <Route path="/user-reports" element={<UserListWithReports />} />
+                      <Route path="/analytics" element={<Analytics />} />
+                      <Route path="/events" element={<Events />} />
                     </Routes>
                   </div>
                 </main>
