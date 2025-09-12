@@ -75,7 +75,7 @@ export default function Analytics() {
 
       if (!error) {
         const todayRecords = data?.filter(record => 
-          record.created_at?.startsWith(today)
+          record.log_at?.startsWith(today)
         ) || [];
         setTodayAttendanceData(todayRecords);
         setAnalytics(prev => ({ ...prev, todayPresent: todayRecords.length }));
@@ -388,7 +388,7 @@ export default function Analytics() {
             <select 
               value={locationFilter} 
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-3 py-1 pr-12 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>

@@ -41,7 +41,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
           return { 
             ...record, 
             user,
-            date: record.created_at?.split('T')[0]
+            date: record.log_at?.split('T')[0]
           };
         });
         
@@ -56,9 +56,9 @@ export default function Attendance({ showFilter = true, limit = null }) {
           console.log('Today date:', today);
           console.log('Records before date filter:', mergedData.length);
           mergedData = mergedData.filter(record => {
-            const recordDate = record.created_at?.split('T')[0];
+            const recordDate = record.log_at?.split('T')[0];
             console.log('Record date:', recordDate, 'matches today:', recordDate === today);
-            return record.created_at?.startsWith(today);
+            return record.log_at?.startsWith(today);
           });
           console.log('Records after date filter:', mergedData.length);
           mergedData = mergedData.slice(0, limit);
@@ -101,9 +101,9 @@ export default function Attendance({ showFilter = true, limit = null }) {
           aValue = a.work_location || '';
           bValue = b.work_location || '';
           break;
-        case 'created_at':
-          aValue = a.created_at || '';
-          bValue = b.created_at || '';
+        case 'log_at':
+          aValue = a.log_at || '';
+          bValue = b.log_at || '';
           break;
         case 'log_type':
           aValue = a.log_type || '';
@@ -119,8 +119,6 @@ export default function Attendance({ showFilter = true, limit = null }) {
       return 0;
     });
   };
-  
-
   
   if (loading) {
     return (
@@ -170,7 +168,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
         
         {records.filter(rec => {
           const matchesName = !filters.name || rec.user?.name?.toLowerCase().includes(filters.name.toLowerCase());
-          const matchesDate = !filters.date || rec.created_at?.split('T')[0] === filters.date;
+          const matchesDate = !filters.date || rec.log_at?.split('T')[0] === filters.date;
           const matchesLocation = !filters.location || rec.work_location === filters.location;
           const matchesStatus = !filters.status || rec.log_type === filters.status;
           return matchesName && matchesDate && matchesLocation && matchesStatus;
@@ -204,7 +202,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
                     </button>
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-700">
-                    <button onClick={() => handleSort('created_at')} className="flex items-center space-x-2 hover:text-primary transition-colors">
+                    <button onClick={() => handleSort('log_at')} className="flex items-center space-x-2 hover:text-primary transition-colors">
                       <span>⏰</span>
                       <span>Time</span>
                     </button>
@@ -221,7 +219,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
               <tbody>
                 {getSortedRecords(records.filter(rec => {
                   const matchesName = !filters.name || rec.user?.name?.toLowerCase().includes(filters.name.toLowerCase());
-                  const matchesDate = !filters.date || rec.created_at?.split('T')[0] === filters.date;
+                  const matchesDate = !filters.date || rec.log_at?.split('T')[0] === filters.date;
                   const matchesLocation = !filters.location || rec.work_location === filters.location;
                   const matchesStatus = !filters.status || rec.log_type === filters.status;
                   return matchesName && matchesDate && matchesLocation && matchesStatus;
@@ -238,7 +236,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
                           <span className="font-medium text-slate-900">{rec.user?.name || "-"}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-slate-600">{rec.created_at?.split('T')[0] || "-"}</td>
+                      <td className="py-4 px-6 text-slate-600">{rec.log_at?.split('T')[0] || "-"}</td>
                       <td className="py-4 px-6">
                         <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
                           {rec.work_location || "Remote"}
@@ -246,7 +244,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
                       </td>
                       <td className="py-4 px-6">
                         <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {formatTime(rec.created_at)}
+                          {formatTime(rec.log_at)}
                         </span>
                       </td>
                       <td className="py-4 px-6">

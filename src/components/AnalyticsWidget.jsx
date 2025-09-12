@@ -42,7 +42,7 @@ export default function AnalyticsWidget() {
         .select('*');
       
       const todayRecords = attendanceData?.filter(record => 
-        record.created_at?.startsWith(today)
+        record.log_at?.startsWith(today)
       ) || [];
 
       calculateMetrics(data || [], totalEmployees || 0, todayRecords.length);
