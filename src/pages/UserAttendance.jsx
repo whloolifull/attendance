@@ -1,20 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 
-export default function UserListWithReports() {
+export default function UserAttendance() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingReports, setLoadingReports] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const attendanceRef = useRef(null);
 
   // Fetch team members
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase.from("user").select("id, name");
+        const { data, error } = await supabase.from("user").select("id, name, team_name");
         if (error) throw error;
         setUsers(data);
       } catch (error) {
@@ -26,7 +27,7 @@ export default function UserListWithReports() {
     fetchUsers();
   }, []);
 
-  // Fetch selected user's reports
+  // Fetch selected user
   useEffect(() => {
     if (!selectedUser) return;
     const fetchReports = async () => {
@@ -123,7 +124,7 @@ export default function UserListWithReports() {
   return (
     <div className="space-y-8">
       <div className="mb-8">
-        <h1 className="text-2xl lg:text-4xl font-bold text-slate-800 mb-2">User Reports</h1>
+        <h1 className="text-2xl lg:text-4xl font-bold text-slate-800 mb-2">User's Attendance</h1>
         <p className="text-slate-600">Select a team member to view their attendance records.</p>
       </div>
 
@@ -139,35 +140,58 @@ export default function UserListWithReports() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {users.map((user) => (
-            <button
-              key={user.id}
-              className={`p-4 rounded-xl border-2 transition-all duration-200 transform hover:scale-105 ${
-                selectedUser?.id === user.id
-                  ? "bg-primary text-white border-primary shadow-lg"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:shadow-md"
-              }`}
-              onClick={() => setSelectedUser(user)}
-            >
-              <div className="flex flex-col items-center space-y-2">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
-                  selectedUser?.id === user.id
-                    ? "bg-white/20 text-white"
-                    : "bg-primary text-white"
-                }`}>
-                  {user.name.charAt(0)}
-                </div>
-                <span className="font-medium text-sm text-center">{user.name}</span>
+        <div className="space-y-6">
+          {Object.entries(users.reduce((teams, user) => {
+            const team = user.team_name || 'No Team';
+            if (!teams[team]) teams[team] = [];
+            teams[team].push(user);
+            return teams;
+          }, {})).map(([teamName, teamUsers]) => (
+            <div key={teamName}>
+              <h3 className="text-lg font-semibold text-slate-700 mb-3 flex items-center space-x-2">
+                <span>🏢</span>
+                <span>{teamName}</span>
+                <span className="bg-slate-200 text-slate-600 px-2 py-1 rounded-full text-sm">
+                  {teamUsers.length}
+                </span>
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {teamUsers.map((user) => (
+                  <button
+                    key={user.id}
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 transform hover:scale-105 ${
+                      selectedUser?.id === user.id
+                        ? "bg-primary text-white border-primary shadow-lg"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-primary hover:shadow-md"
+                    }`}
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setTimeout(() => {
+                        attendanceRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    }}
+                  >
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                        selectedUser?.id === user.id
+                          ? "bg-white/20 text-white"
+                          : "bg-primary text-white"
+                      }`}>
+                        {user.name.charAt(0)}
+                      </div>
+                      <span className="font-medium text-sm text-center">{user.name}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* User's Reports */}
+      {/* User's Attendance */}
       {selectedUser && (
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
+        <div ref={attendanceRef} className="bg-white rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
           <div className="bg-primary p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -176,7 +200,7 @@ export default function UserListWithReports() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-white">{selectedUser.name}'s Attendance</h3>
-                  <p className="text-orange-100">Detailed attendance records</p>
+                  <p className="text-orange-100">Attendance records</p>
                 </div>
               </div>
               <div className="bg-white/20 px-4 py-2 rounded-lg">

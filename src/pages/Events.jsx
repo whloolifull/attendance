@@ -14,7 +14,7 @@ export default function Events() {
       const { data, error } = await supabase
         .from('event')
         .select('*')
-        .order('id', { ascending: false });
+        .order('log_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching events:', error);
@@ -32,6 +32,24 @@ export default function Events() {
 
   const getEventIcon = () => '📅';
   const getEventColor = () => 'blue';
+
+  const categorizeEvents = (events) => {
+    const monthCategories = {};
+    
+    events.forEach(event => {
+      if (!event.log_at) return;
+      
+      const eventDate = new Date(event.log_at);
+      const monthKey = eventDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      
+      if (!monthCategories[monthKey]) {
+        monthCategories[monthKey] = [];
+      }
+      monthCategories[monthKey].push(event);
+    });
+    
+    return monthCategories;
+  };
 
   if (loading) {
     return (
@@ -55,7 +73,7 @@ export default function Events() {
       <div className="bg-white rounded-xl shadow-lg border border-slate-200/50 p-6">
         <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center space-x-2">
           <span>📅</span>
-          <span>Upcoming Events</span>
+          <span>Events</span>
         </h3>
         
         {events.length === 0 ? (
@@ -65,48 +83,54 @@ export default function Events() {
             <p className="text-slate-500">No events are currently scheduled.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {events.map((event) => {
-              const color = getEventColor();
-              const icon = getEventIcon();
+          <div className="space-y-6">
+            {(() => {
+              const categorized = categorizeEvents(events);
+              const sortedMonths = Object.keys(categorized).sort((a, b) => new Date(b) - new Date(a));
               
-              return (
-                <div key={event.id} className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg hover:shadow-md transition-shadow">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-blue-600 text-2xl">{icon}</span>
-                    <div>
-                      <h4 className="font-semibold text-blue-800">{event.title}</h4>
-                      <p className="text-sm text-blue-600">
-                        {(() => {
-                          const dateValue = event.log_at;
-                          
-                          if (!dateValue) return 'No date available';
-                          
-                          const date = new Date(dateValue);
-                          if (isNaN(date.getTime())) return 'Invalid date format';
-                          
-                          return date.toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
-                          });
-                        })()
-                        }
-                      </p>
-                      {event.description && (
-                        <p className="text-xs text-blue-500 mt-1">{event.description}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-xs bg-blue-200 text-blue-800 px-3 py-1 rounded-full">
-                      Event
-                    </span>
+              return sortedMonths.map(month => (
+                <div key={month}>
+                  <h4 className="text-lg font-semibold text-slate-700 mb-3">
+                    {month}
+                  </h4>
+                  <div className="space-y-3">
+                    {categorized[month].map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-lg hover:shadow-md transition-shadow">
+                        <div>
+                          <div>
+                            <h4 className="font-semibold text-slate-800">{event.title}</h4>
+                            <p className="text-sm text-slate-600">
+                              {(() => {
+                                const dateValue = event.log_at;
+                                if (!dateValue) return 'No date available';
+                                const date = new Date(dateValue);
+                                if (isNaN(date.getTime())) return 'Invalid date format';
+                                return date.toLocaleDateString('en-US', { 
+                                  weekday: 'long', 
+                                  month: 'long',
+                                  day: 'numeric' 
+                                }).replace(/(\d+)/, (match) => {
+                                  const day = parseInt(match);
+                                  const suffix = day % 10 === 1 && day !== 11 ? 'st' : 
+                                                day % 10 === 2 && day !== 12 ? 'nd' : 
+                                                day % 10 === 3 && day !== 13 ? 'rd' : 'th';
+                                  return `${day}${suffix}`;
+                                });
+                              })()
+                              }
+                            </p>
+                            {event.description && (
+                              <p className="text-xs text-slate-500 mt-1">{event.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
+              ));
+            })()
+            }
           </div>
         )}
       </div>

@@ -17,6 +17,7 @@ export default function AnalyticsWidget() {
 
   const fetchQuickMetrics = async () => {
     try {
+      // Fetch report data
       const { data, error } = await supabase
         .from('report_attendance_daily')
         .select('*')
@@ -28,7 +29,23 @@ export default function AnalyticsWidget() {
         setMetrics({ hasData: false });
         return;
       }
-      calculateMetrics(data || []);
+
+      // Fetch total employees
+      const { count: totalEmployees } = await supabase
+        .from('user')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch today's attendance
+      const today = new Date().toISOString().split('T')[0];
+      const { data: attendanceData } = await supabase
+        .from('attendance')
+        .select('*');
+      
+      const todayRecords = attendanceData?.filter(record => 
+        record.created_at?.startsWith(today)
+      ) || [];
+
+      calculateMetrics(data || [], totalEmployees || 0, todayRecords.length);
     } catch (error) {
       console.error('Error fetching metrics:', error);
       setMetrics({ hasData: false });
@@ -37,9 +54,7 @@ export default function AnalyticsWidget() {
     }
   };
 
-  const calculateMetrics = (data) => {
-    const today = new Date().toISOString().split('T')[0];
-    const todayRecords = data?.filter(r => r.date === today) || [];
+  const calculateMetrics = (data, totalEmployees, todayAttendance) => {
     const validRecords = data?.filter(r => r.total_hours && !isNaN(parseFloat(r.total_hours))) || [];
     const completeRecords = data?.filter(r => r.clock_in && r.clock_out) || [];
     
@@ -48,15 +63,13 @@ export default function AnalyticsWidget() {
       : 0;
 
     const attendanceRate = data?.length > 0 ? (completeRecords.length / data.length) * 100 : 0;
-    const uniqueEmployees = new Set(data?.map(r => r.user_id) || []).size;
-    const todayComplete = todayRecords.filter(r => r.clock_in && r.clock_out).length;
-    const hasTodayData = todayRecords.length > 0;
+    const hasTodayData = todayAttendance > 0;
 
     setMetrics({
       avgWorkHours: avgHours,
       attendanceRate,
-      totalEmployees: uniqueEmployees,
-      todayAttendance: todayComplete,
+      totalEmployees,
+      todayAttendance,
       hasData: data && data.length > 0,
       hasTodayData
     });

@@ -14,18 +14,22 @@ export default function Attendance({ showFilter = true, limit = null }) {
       try {
         setLoading(true);
         // Fetch attendance data
+        console.log('Fetching from attendance table...');
         const { data: attendanceData, error: attendanceError } = await supabase
-          .from("report_attendance_daily")
+          .from("attendance")
           .select("*");
           
+        console.log('Attendance query result:', { data: attendanceData, error: attendanceError });
+          
         if (attendanceError) {
+          console.error('Attendance error:', attendanceError);
           throw attendanceError;
         }
           
         // Fetch user data
         const { data: userData, error: userError } = await supabase
           .from("user")
-          .select("id, name");
+          .select("slack_user_id, name");
           
         if (userError) {
           throw userError;
@@ -33,18 +37,35 @@ export default function Attendance({ showFilter = true, limit = null }) {
           
         // Merge the data
         let mergedData = attendanceData.map(record => {
-        const user = userData.find(u => u.id === record.user_id);
-          return { ...record, user };
+          const user = userData.find(u => u.slack_user_id === record.slack_user_id);
+          return { 
+            ...record, 
+            user,
+            date: record.created_at?.split('T')[0]
+          };
         });
+        
+        console.log('Raw attendance data:', attendanceData);
+        console.log('Attendance data length:', attendanceData?.length || 0);
+        console.log('User data:', userData);
+        console.log('Merged data before filter:', mergedData);
         
         // Filter by current date for dashboard
         if (limit) {
           const today = new Date().toISOString().split('T')[0];
-          mergedData = mergedData.filter(record => record.date === today);
+          console.log('Today date:', today);
+          console.log('Records before date filter:', mergedData.length);
+          mergedData = mergedData.filter(record => {
+            const recordDate = record.created_at?.split('T')[0];
+            console.log('Record date:', recordDate, 'matches today:', recordDate === today);
+            return record.created_at?.startsWith(today);
+          });
+          console.log('Records after date filter:', mergedData.length);
           mergedData = mergedData.slice(0, limit);
         }
           
         setRecords(mergedData);
+        console.log('Final records set:', mergedData);
       } catch (err) {
         setError(err.message);
         console.error(err);
@@ -80,21 +101,13 @@ export default function Attendance({ showFilter = true, limit = null }) {
           aValue = a.work_location || '';
           bValue = b.work_location || '';
           break;
-        case 'clock_in':
-          aValue = a.clock_in || '';
-          bValue = b.clock_in || '';
+        case 'created_at':
+          aValue = a.created_at || '';
+          bValue = b.created_at || '';
           break;
-        case 'clock_out':
-          aValue = a.clock_out || '';
-          bValue = b.clock_out || '';
-          break;
-        case 'total_hours':
-          aValue = parseFloat(a.total_hours) || 0;
-          bValue = parseFloat(b.total_hours) || 0;
-          break;
-        case 'status':
-          aValue = (a.clock_in && a.clock_out) ? 'Complete' : 'Incomplete';
-          bValue = (b.clock_in && b.clock_out) ? 'Complete' : 'Incomplete';
+        case 'log_type':
+          aValue = a.log_type || '';
+          bValue = b.log_type || '';
           break;
         default:
           aValue = a[sortConfig.key];
@@ -107,19 +120,7 @@ export default function Attendance({ showFilter = true, limit = null }) {
     });
   };
   
-  const getStatusBadge = (isIncomplete) => {
-    return isIncomplete ? (
-      <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800 border border-orange-200">
-        <span>⚠️</span>
-        <span>Incomplete</span>
-      </span>
-    ) : (
-      <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200">
-        <span>✓</span>
-        <span>Complete</span>
-      </span>
-    );
-  };
+
   
   if (loading) {
     return (
@@ -169,11 +170,9 @@ export default function Attendance({ showFilter = true, limit = null }) {
         
         {records.filter(rec => {
           const matchesName = !filters.name || rec.user?.name?.toLowerCase().includes(filters.name.toLowerCase());
-          const matchesDate = !filters.date || rec.date === filters.date;
+          const matchesDate = !filters.date || rec.created_at?.split('T')[0] === filters.date;
           const matchesLocation = !filters.location || rec.work_location === filters.location;
-          const matchesStatus = !filters.status || 
-            (filters.status === 'Complete' && rec.clock_in && rec.clock_out) ||
-            (filters.status === 'Incomplete' && (!rec.clock_in || !rec.clock_out));
+          const matchesStatus = !filters.status || rec.log_type === filters.status;
           return matchesName && matchesDate && matchesLocation && matchesStatus;
         }).length === 0 ? (
           <div className="text-center py-12">
@@ -205,42 +204,28 @@ export default function Attendance({ showFilter = true, limit = null }) {
                     </button>
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-700">
-                    <button onClick={() => handleSort('clock_in')} className="flex items-center space-x-2 hover:text-primary transition-colors">
-                      <span>🔄</span>
-                      <span>Clock In</span>
+                    <button onClick={() => handleSort('created_at')} className="flex items-center space-x-2 hover:text-primary transition-colors">
+                      <span>⏰</span>
+                      <span>Time</span>
                     </button>
                   </th>
                   <th className="text-left py-4 px-6 font-semibold text-slate-700">
-                    <button onClick={() => handleSort('clock_out')} className="flex items-center space-x-2 hover:text-primary transition-colors">
-                      <span>🔚</span>
-                      <span>Clock Out</span>
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-slate-700">
-                    <button onClick={() => handleSort('total_hours')} className="flex items-center space-x-2 hover:text-primary transition-colors">
-                      <span>⏱️</span>
-                      <span>Total Hours</span>
-                    </button>
-                  </th>
-                  <th className="text-left py-4 px-6 font-semibold text-slate-700">
-                    <button onClick={() => handleSort('status')} className="flex items-center space-x-2 hover:text-primary transition-colors">
+                    <button onClick={() => handleSort('log_type')} className="flex items-center space-x-2 hover:text-primary transition-colors">
                       <span>📊</span>
-                      <span>Status</span>
+                      <span>Action</span>
                     </button>
                   </th>
+
                 </tr>
               </thead>
               <tbody>
                 {getSortedRecords(records.filter(rec => {
                   const matchesName = !filters.name || rec.user?.name?.toLowerCase().includes(filters.name.toLowerCase());
-                  const matchesDate = !filters.date || rec.date === filters.date;
+                  const matchesDate = !filters.date || rec.created_at?.split('T')[0] === filters.date;
                   const matchesLocation = !filters.location || rec.work_location === filters.location;
-                  const matchesStatus = !filters.status || 
-                    (filters.status === 'Complete' && rec.clock_in && rec.clock_out) ||
-                    (filters.status === 'Incomplete' && (!rec.clock_in || !rec.clock_out));
+                  const matchesStatus = !filters.status || rec.log_type === filters.status;
                   return matchesName && matchesDate && matchesLocation && matchesStatus;
                 })).map((rec, index) => {
-                  const isIncomplete = !rec.clock_in || !rec.clock_out;
                   return (
                     <tr key={rec.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200 ${
                       index % 2 === 0 ? 'bg-white' : 'bg-slate-25'
@@ -253,29 +238,23 @@ export default function Attendance({ showFilter = true, limit = null }) {
                           <span className="font-medium text-slate-900">{rec.user?.name || "-"}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-slate-600">{rec.date || "-"}</td>
+                      <td className="py-4 px-6 text-slate-600">{rec.created_at?.split('T')[0] || "-"}</td>
                       <td className="py-4 px-6">
                         <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
                           {rec.work_location || "Remote"}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {formatTime(rec.clock_in)}
+                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                          {formatTime(rec.created_at)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {formatTime(rec.clock_out)}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          rec.log_type === 'CLOCK_IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {rec.log_type === 'CLOCK_IN' ? 'Clock In' : 'Clock Out'}
                         </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="bg-primary px-3 py-1 rounded-full text-sm font-medium text-white">
-                          {isIncomplete ? "-" : rec.total_hours}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6">
-                        {getStatusBadge(isIncomplete)}
                       </td>
                     </tr>
                   );

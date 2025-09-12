@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import LeaveRequests from "./pages/LeaveRequests";
 import Attendance from "./pages/Attendance";
-import UserListWithReports from "./pages/UserListWithReports";
+import UserAttendance from "./pages/UserAttendance";
 import Analytics from "./pages/Analytics";
 import Events from "./pages/Events";
 import Sidebar from "./components/Sidebar";
@@ -22,7 +22,7 @@ export default function App() {
                       <Route path="/" element={<Dashboard />} />
                       <Route path="/attendance" element={<Attendance />} />
                       <Route path="/leaves" element={<LeaveRequests />} />
-                      <Route path="/user-reports" element={<UserListWithReports />} />
+                      <Route path="/user-attendance" element={<UserAttendance />} />
                       <Route path="/analytics" element={<Analytics />} />
                       <Route path="/events" element={<Events />} />
                     </Routes>

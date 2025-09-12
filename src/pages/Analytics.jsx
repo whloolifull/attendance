@@ -11,16 +11,27 @@ export default function Analytics() {
     avgWorkHours: 0,
     attendanceRate: 0,
     totalEmployees: 0,
+    todayPresent: 0,
     onTimeRate: 0,
     weeklyTrend: [],
     locationStats: {},
     monthlyComparison: []
   });
+  const [todayAttendanceData, setTodayAttendanceData] = useState([]);
+  const [locationFilter, setLocationFilter] = useState('all'); // 'all', 'week', 'month', 'today'
 
   useEffect(() => {
     fetchAnalyticsData();
+    fetchTotalEmployees();
+    fetchTodayAttendanceForTrend();
     fetchEvents();
   }, []);
+
+  useEffect(() => {
+    if (attendanceData.length > 0) {
+      calculateAnalytics(attendanceData);
+    }
+  }, [attendanceData, todayAttendanceData]);
 
   const fetchAnalyticsData = async () => {
     try {
@@ -36,9 +47,47 @@ export default function Analytics() {
       }
       
       setAttendanceData(data || []);
-      calculateAnalytics(data || []);
     } catch (error) {
       setAttendanceData([]);
+    }
+  };
+
+  const fetchTotalEmployees = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('user')
+        .select('*', { count: 'exact', head: true });
+
+      if (!error) {
+        setAnalytics(prev => ({ ...prev, totalEmployees: count || 0 }));
+      }
+    } catch (error) {
+      console.error('Error fetching total employees:', error);
+    }
+  };
+
+  const fetchTodayAttendanceForTrend = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*');
+
+      if (!error) {
+        const todayRecords = data?.filter(record => 
+          record.created_at?.startsWith(today)
+        ) || [];
+        setTodayAttendanceData(todayRecords);
+        setAnalytics(prev => ({ ...prev, todayPresent: todayRecords.length }));
+        // Recalculate analytics with today's data
+        if (attendanceData.length > 0) {
+          calculateAnalytics(attendanceData);
+        }
+      } else {
+        console.error('Error fetching today attendance:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching today attendance:', error);
     } finally {
       setLoading(false);
     }
@@ -66,15 +115,15 @@ export default function Analytics() {
 
   const calculateAnalytics = (data) => {
     if (!data || !data.length) {
-      setAnalytics({
+      setAnalytics(prev => ({
+        ...prev,
         avgWorkHours: 0,
         attendanceRate: 0,
-        totalEmployees: 0,
         onTimeRate: 0,
         weeklyTrend: [],
         locationStats: {},
         monthlyComparison: []
-      });
+      }));
       return;
     }
 
@@ -88,26 +137,34 @@ export default function Analytics() {
     const completeRecords = data.filter(r => r.clock_in && r.clock_out);
     const attendanceRate = data.length > 0 ? (completeRecords.length / data.length) * 100 : 0;
 
-    // Get unique employees
-    const uniqueEmployees = new Set(data.map(r => r.user_id)).size;
+    // Note: totalEmployees is now fetched separately from user table
 
     // Calculate on-time rate (assuming 9:00 AM is standard start)
     const onTimeRecords = data.filter(r => {
       if (!r.clock_in) return false;
-      const clockInTime = new Date(`2000-01-01T${r.clock_in}`);
-      const standardTime = new Date(`2000-01-01T09:00:00`);
-      return clockInTime <= standardTime;
+      try {
+        const clockInTime = new Date(r.clock_in);
+        const hours = clockInTime.getHours();
+        const minutes = clockInTime.getMinutes();
+        return hours < 9 || (hours === 9 && minutes === 0);
+      } catch {
+        return false;
+      }
     });
     const onTimeRate = completeRecords.length > 0 ? (onTimeRecords.length / completeRecords.length) * 100 : 0;
 
-    // Weekly trend (last 7 days)
-    const last7Days = [...Array(7)].map((_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      return date.toISOString().split('T')[0];
-    }).reverse();
+    // Weekly trend (last 7 weekdays only)
+    const last7Days = [];
+    let date = new Date();
+    while (last7Days.length < 7) {
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Exclude Sunday (0) and Saturday (6)
+        last7Days.unshift(date.toISOString().split('T')[0]);
+      }
+      date.setDate(date.getDate() - 1);
+    }
     
-    // Monday to Sunday for chart display
+    // Monday to Friday for chart display (weekdays only)
     const getMondayOfCurrentWeek = () => {
       const today = new Date();
       const dayOfWeek = today.getDay();
@@ -116,7 +173,7 @@ export default function Analytics() {
       return monday;
     };
     
-    const mondayToSunday = [...Array(7)].map((_, i) => {
+    const mondayToFriday = [...Array(5)].map((_, i) => {
       const monday = getMondayOfCurrentWeek();
       const date = new Date(monday);
       date.setDate(monday.getDate() + i);
@@ -124,22 +181,35 @@ export default function Analytics() {
     });
 
     const weeklyTrend = last7Days.map(date => {
-      const dayRecords = data.filter(r => r.date === date);
+      const today = new Date().toISOString().split('T')[0];
       
-      const avgHoursForDay = dayRecords.length > 0 
-        ? dayRecords.filter(r => r.total_hours).reduce((sum, r) => sum + parseFloat(r.total_hours || 0), 0) / dayRecords.length
-        : 0;
-      
-      const attendanceCount = dayRecords.filter(r => r.clock_in && r.clock_out).length;
-      
-      return {
-        date,
-        avgHours: avgHoursForDay,
-        attendance: attendanceCount
-      };
+      if (date === today) {
+        // Use today's data from attendance table
+        const todayCount = todayAttendanceData.length;
+        return {
+          date,
+          avgHours: 0, // No hours data from attendance table
+          attendance: todayCount
+        };
+      } else {
+        // Use historical data from report_attendance_daily
+        const dayRecords = data.filter(r => r.date === date);
+        
+        const avgHoursForDay = dayRecords.length > 0 
+          ? dayRecords.filter(r => r.total_hours).reduce((sum, r) => sum + parseFloat(r.total_hours || 0), 0) / dayRecords.length
+          : 0;
+        
+        const attendanceCount = dayRecords.filter(r => r.clock_in && r.clock_out).length;
+        
+        return {
+          date,
+          avgHours: avgHoursForDay,
+          attendance: attendanceCount
+        };
+      }
     });
     
-    const chartData = mondayToSunday.map(date => {
+    const chartData = mondayToFriday.map(date => {
       const dayRecords = data.filter(r => r.date === date);
       
       const avgHoursForDay = dayRecords.length > 0 
@@ -159,33 +229,39 @@ export default function Analytics() {
       return acc;
     }, {});
 
-    setAnalytics({
+    setAnalytics(prev => ({
+      ...prev,
       avgWorkHours: avgHours,
       attendanceRate,
-      totalEmployees: uniqueEmployees,
       onTimeRate,
       weeklyTrend,
       chartData,
       locationStats,
       monthlyComparison: []
-    });
+    }));
   };
 
-  const StatCard = ({ title, value, icon, color = "primary", suffix = "" }) => (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200/50 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-slate-600 text-sm font-medium">{title}</p>
-          <p className={`text-3xl font-bold text-${color} mt-2`}>
-            {typeof value === 'number' ? value.toFixed(1) : value}{suffix}
-          </p>
-        </div>
-        <div className={`w-12 h-12 bg-${color} bg-opacity-10 rounded-lg flex items-center justify-center`}>
-          <span className="text-2xl">{icon}</span>
+  const StatCard = ({ title, value, icon, color = "primary", suffix = "" }) => {
+    const displayValue = typeof value === 'number' 
+      ? (title.includes('Employee') || title.includes('Present') ? Math.round(value) : value.toFixed(1))
+      : value;
+    
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200/50 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-slate-600 text-sm font-medium">{title}</p>
+            <p className={`text-3xl font-bold text-${color} mt-2`}>
+              {displayValue}{suffix}
+            </p>
+          </div>
+          <div className={`w-12 h-12 bg-${color} bg-opacity-10 rounded-lg flex items-center justify-center`}>
+            <span className="text-2xl">{icon}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -248,10 +324,9 @@ export default function Analytics() {
           icon="👥"
         />
         <StatCard
-          title="On-Time Rate"
-          value={analytics.onTimeRate}
-          icon="🎯"
-          suffix="%"
+          title="Today Present"
+          value={analytics.todayPresent}
+          icon="✅"
         />
       </div>
 
@@ -305,10 +380,22 @@ export default function Analytics() {
 
         {/* Work Location Distribution */}
         <div className="bg-white rounded-xl shadow-lg border border-slate-200/50 p-6">
-          <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center space-x-2">
-            <span>📍</span>
-            <span>Work Location Distribution</span>
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold text-slate-800 flex items-center space-x-2">
+              <span>📍</span>
+              <span>Work Location Distribution</span>
+            </h3>
+            <select 
+              value={locationFilter} 
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
           {Object.keys(analytics.locationStats).length === 0 ? (
             <div className="text-center py-8">
               <span className="text-4xl mb-3 block">📍</span>
@@ -316,30 +403,128 @@ export default function Analytics() {
             </div>
           ) : (
             <div className="space-y-4">
-              {Object.entries(analytics.locationStats).map(([location, count]) => {
-                const percentage = attendanceData.length > 0 ? (count / attendanceData.length) * 100 : 0;
-                return (
-                  <div key={location} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">
-                        {location === 'Remote' ? '🏠' : location === 'Office' ? '🏢' : '📍'}
-                      </span>
-                      <span className="font-medium text-slate-700">{location}</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-24 bg-slate-200 rounded-full h-2">
+              {(() => {
+                const getFilteredLocationStats = () => {
+                  let filteredData = attendanceData;
+                  const today = new Date();
+                  
+                  switch(locationFilter) {
+                    case 'today':
+                      const todayStr = today.toISOString().split('T')[0];
+                      filteredData = attendanceData.filter(r => r.date === todayStr);
+                      break;
+                    case 'week':
+                      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                      const weekAgoStr = weekAgo.toISOString().split('T')[0];
+                      filteredData = attendanceData.filter(r => {
+                        if (r.date < weekAgoStr) return false;
+                        const recordDate = new Date(r.date);
+                        const dayOfWeek = recordDate.getDay();
+                        return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude weekends
+                      });
+                      break;
+                    case 'month':
+                      const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                      const monthAgoStr = monthAgo.toISOString().split('T')[0];
+                      filteredData = attendanceData.filter(r => {
+                        if (r.date < monthAgoStr) return false;
+                        const recordDate = new Date(r.date);
+                        const dayOfWeek = recordDate.getDay();
+                        return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude weekends
+                      });
+                      break;
+                    default:
+                      filteredData = attendanceData;
+                  }
+                  
+                  const locationStats = filteredData.reduce((acc, record) => {
+                    const location = record.work_location || 'Remote';
+                    acc[location] = (acc[location] || 0) + 1;
+                    return acc;
+                  }, {});
+                  
+                  return { locationStats, totalRecords: filteredData.length };
+                };
+                
+                const { locationStats, totalRecords } = getFilteredLocationStats();
+                
+                return Object.entries(locationStats)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([location, count]) => {
+                    const percentage = totalRecords > 0 ? (count / totalRecords) * 100 : 0;
+                  const colors = {
+                    'Remote': { bg: 'bg-blue-500', text: 'text-blue-700', light: 'bg-blue-50' },
+                    'Office': { bg: 'bg-green-500', text: 'text-green-700', light: 'bg-green-50' },
+                    'Hybrid': { bg: 'bg-purple-500', text: 'text-purple-700', light: 'bg-purple-50' }
+                  };
+                  const color = colors[location] || { bg: 'bg-gray-500', text: 'text-gray-700', light: 'bg-gray-50' };
+                  
+                    return (
+                    <div key={location} className={`${color.light} border border-opacity-20 rounded-lg p-4`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg">
+                            {location === 'Remote' ? '🏠' : location === 'Office' ? '🏢' : location === 'Hybrid' ? '🔄' : '📍'}
+                          </span>
+                          <span className={`font-semibold ${color.text}`}>{location}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-lg font-bold ${color.text}`}>{count}</div>
+                          <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2">
                         <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                          className={`${color.bg} h-2 rounded-full transition-all duration-500`}
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-slate-700 w-12 text-right">
-                        {count}
-                      </span>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                  });
+              })()}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="text-center text-sm text-slate-600">
+                  Total Records: <span className="font-semibold">{(() => {
+                    const { totalRecords } = (() => {
+                      let filteredData = attendanceData;
+                      const today = new Date();
+                      
+                      switch(locationFilter) {
+                        case 'today':
+                          const todayStr = today.toISOString().split('T')[0];
+                          filteredData = attendanceData.filter(r => r.date === todayStr);
+                          break;
+                        case 'week':
+                          const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+                          const weekAgoStr = weekAgo.toISOString().split('T')[0];
+                          filteredData = attendanceData.filter(r => {
+                            if (r.date < weekAgoStr) return false;
+                            const recordDate = new Date(r.date);
+                            const dayOfWeek = recordDate.getDay();
+                            return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude weekends
+                          });
+                          break;
+                        case 'month':
+                          const monthAgo = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+                          const monthAgoStr = monthAgo.toISOString().split('T')[0];
+                          filteredData = attendanceData.filter(r => {
+                            if (r.date < monthAgoStr) return false;
+                            const recordDate = new Date(r.date);
+                            const dayOfWeek = recordDate.getDay();
+                            return dayOfWeek !== 0 && dayOfWeek !== 6; // Exclude weekends
+                          });
+                          break;
+                        default:
+                          filteredData = attendanceData;
+                      }
+                      return { totalRecords: filteredData.length };
+                    })();
+                    return totalRecords;
+                  })()}</span> 
+                  <span className="text-xs text-slate-400">({locationFilter === 'all' ? 'all time' : locationFilter})</span>
+                </div>
+              </div>
             </div>
           )}
         </div>

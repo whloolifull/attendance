@@ -5,9 +5,8 @@ export default function Sidebar() {
   
   const menuItems = [
     { path: "/", label: "Dashboard", icon: "📊" },
-    { path: "/attendance", label: "Attendance", icon: "⏰" },
+    { path: "/user-attendance", label: "Attendance", icon: "⏰" },
     { path: "/leaves", label: "Leave Management", icon: "🏖️" },
-    { path: "/user-reports", label: "User Reports", icon: "👥" },
     { path: "/analytics", label: "Analytics", icon: "📈" },
     { path: "/events", label: "Events", icon: "📅" }
   ];

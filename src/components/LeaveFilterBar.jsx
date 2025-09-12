@@ -15,6 +15,12 @@ export default function LeaveFilterBar({ onFilter }) {
     onFilter(newFilters);
   };
 
+  const clearAllFilters = () => {
+    const emptyFilters = { name: "", date: "", type: "", status: "" };
+    setFilters(emptyFilters);
+    onFilter(emptyFilters);
+  };
+
   return (
     <div className="bg-slate-50 rounded-xl mb-6">
       <button
@@ -30,6 +36,15 @@ export default function LeaveFilterBar({ onFilter }) {
       
       {isOpen && (
         <div className="p-4 pt-0">
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-sm text-slate-600">Filter your leave requests</span>
+            <button
+              onClick={clearAllFilters}
+              className="text-sm text-red-600 hover:text-red-700 font-medium"
+            >
+              Clear All
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-2">Search Name</label>
@@ -60,9 +75,8 @@ export default function LeaveFilterBar({ onFilter }) {
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
           >
             <option value="">All Types</option>
-            <option value="Annual Leave">Annual Leave</option>
-            <option value="Sick Leave">Sick Leave</option>
-            <option value="Emergency Leave">Emergency Leave</option>
+            <option value="ANNUAL">Annual</option>
+            <option value="MEDICAL">Medical</option>
           </select>
         </div>
 
@@ -74,9 +88,9 @@ export default function LeaveFilterBar({ onFilter }) {
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
           >
             <option value="">All Status</option>
-            <option value="Approved">Approved</option>
-            <option value="Pending">Pending</option>
-            <option value="Rejected">Rejected</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
           </div>
