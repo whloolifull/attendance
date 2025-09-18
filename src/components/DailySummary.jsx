@@ -7,18 +7,11 @@ const DailySummary = () => {
   useEffect(() => {
     const fetchSummary = async () => {
       try {
-        const response = await fetch("http://43.217.240.242/v1/workflows/run", {
+        const response = await fetch("/api/summary", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer app-7fqSMLFApYE7LycJLXTnNySy"
-          },
-          body: JSON.stringify({
-            "inputs": {
-              "workflow_id": "5NOuouhmVAR6ohir"
-            },
-            "user": "1"
-          }),
+            "Content-Type": "application/json"
+          }
         });
 
         if (!response.ok) {
