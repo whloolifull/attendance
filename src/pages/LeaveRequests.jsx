@@ -67,7 +67,8 @@ export default function LeaveRequests({ showFilter = true, limit = null }) {
       const { error } = await supabase
         .from('leave')
         .update({ status: newStatus })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
         
       if (error) {
         throw error;
@@ -80,6 +81,7 @@ export default function LeaveRequests({ showFilter = true, limit = null }) {
       );
     } catch (err) {
       console.error('Error updating leave status:', err);
+      alert('Failed to update leave status. Please check permissions.');
     }
   };
 
@@ -99,9 +101,9 @@ export default function LeaveRequests({ showFilter = true, limit = null }) {
 
   const getStatusBadge = (status) => {
     const statusStyles = {
-      'Approved': 'bg-green-500 text-white',
-      'Pending': 'bg-yellow-500 text-white',
-      'Rejected': 'bg-red-500 text-white'
+      'APPROVE': 'bg-green-500 text-white',
+      'PENDING': 'bg-yellow-500 text-white',
+      'REJECT': 'bg-red-500 text-white'
     };
     
     return (
@@ -277,17 +279,17 @@ export default function LeaveRequests({ showFilter = true, limit = null }) {
                     </td>
                     {showFilter && (
                       <td className="py-4 px-6">
-                        {row.status?.toLowerCase() === "pending" && (
+                        {row.status === "PENDING" && (
                           <div className="flex space-x-2">
                             <button
-                              onClick={() => handleAction(row.id, "Approved")}
+                              onClick={() => handleAction(row.id, "APPROVE")}
                               className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
                             >
                               <span>✓</span>
                               <span>Approve</span>
                             </button>
                             <button
-                              onClick={() => handleAction(row.id, "Rejected")}
+                              onClick={() => handleAction(row.id, "REJECT")}
                               className="bg-gradient-to-r from-red-500 to-rose-500 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-rose-600 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center space-x-1"
                             >
                               <span>✗</span>

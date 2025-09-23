@@ -35,9 +35,15 @@ export default function Analytics() {
 
   const fetchAnalyticsData = async () => {
     try {
+      // Fetch recent report data (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+      
       const { data, error } = await supabase
         .from('report_attendance_daily')
         .select('*')
+        .gte('date', thirtyDaysAgoStr)
         .order('date', { ascending: false });
 
       if (error) {
@@ -71,12 +77,12 @@ export default function Analytics() {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('attendance')
-        .select('*');
+        .select('*')
+        .gte('log_at', `${today}T00:00:00`)
+        .lt('log_at', `${today}T23:59:59`);
 
       if (!error) {
-        const todayRecords = data?.filter(record => 
-          record.log_at?.startsWith(today)
-        ) || [];
+        const todayRecords = data || [];
         setTodayAttendanceData(todayRecords);
         setAnalytics(prev => ({ ...prev, todayPresent: todayRecords.length }));
         // Recalculate analytics with today's data
@@ -128,14 +134,17 @@ export default function Analytics() {
     }
 
     // Calculate average work hours
-    const validRecords = data.filter(r => r.total_hours && !isNaN(parseFloat(r.total_hours)));
+    const validRecords = data.filter(r => r.total_hours && !isNaN(parseFloat(r.total_hours)) && parseFloat(r.total_hours) > 0);
     const avgHours = validRecords.length > 0 
       ? validRecords.reduce((sum, r) => sum + parseFloat(r.total_hours), 0) / validRecords.length 
       : 0;
 
-    // Calculate attendance rate (complete records vs total)
+    // Calculate attendance rate based on expected vs actual attendance
     const completeRecords = data.filter(r => r.clock_in && r.clock_out);
-    const attendanceRate = data.length > 0 ? (completeRecords.length / data.length) * 100 : 0;
+    const uniqueDates = [...new Set(data?.map(r => r.date) || [])];
+    const expectedAttendance = uniqueDates.length * analytics.totalEmployees;
+    const actualAttendance = completeRecords.length;
+    const attendanceRate = expectedAttendance > 0 ? (actualAttendance / expectedAttendance) * 100 : 0;
 
     // Note: totalEmployees is now fetched separately from user table
 

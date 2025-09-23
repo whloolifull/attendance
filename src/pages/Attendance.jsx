@@ -14,13 +14,13 @@ export default function Attendance({ showFilter = true, limit = null }) {
       try {
         setLoading(true);
         // Fetch attendance data
-        console.log('Fetching from attendance table...');
+        const today = new Date().toISOString().split('T')[0];
         const { data: attendanceData, error: attendanceError } = await supabase
           .from("attendance")
-          .select("*");
-          
-        console.log('Attendance query result:', { data: attendanceData, error: attendanceError });
-          
+          .select("*")
+          .gte('log_at', `${today}T00:00:00`)
+          .lt('log_at', `${today}T23:59:59`);
+                  
         if (attendanceError) {
           console.error('Attendance error:', attendanceError);
           throw attendanceError;
@@ -45,27 +45,12 @@ export default function Attendance({ showFilter = true, limit = null }) {
           };
         });
         
-        console.log('Raw attendance data:', attendanceData);
-        console.log('Attendance data length:', attendanceData?.length || 0);
-        console.log('User data:', userData);
-        console.log('Merged data before filter:', mergedData);
-        
-        // Filter by current date for dashboard
+        // Limit records for dashboard
         if (limit) {
-          const today = new Date().toISOString().split('T')[0];
-          console.log('Today date:', today);
-          console.log('Records before date filter:', mergedData.length);
-          mergedData = mergedData.filter(record => {
-            const recordDate = record.log_at?.split('T')[0];
-            console.log('Record date:', recordDate, 'matches today:', recordDate === today);
-            return record.log_at?.startsWith(today);
-          });
-          console.log('Records after date filter:', mergedData.length);
           mergedData = mergedData.slice(0, limit);
         }
           
         setRecords(mergedData);
-        console.log('Final records set:', mergedData);
       } catch (err) {
         setError(err.message);
         console.error(err);
